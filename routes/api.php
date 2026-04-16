@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EmployeeController;
@@ -7,7 +8,9 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TableController;
 use Illuminate\Support\Facades\Route;
 
@@ -41,9 +44,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── POS ──────────────────────────────────────────────────────────────
     Route::prefix('pos')->group(function () {
-        Route::get('menu-items',           [PosController::class, 'getMenuItems']);
-        Route::get('search-items',         [PosController::class, 'searchItems']);
+        Route::get('items',                [PosController::class, 'getMenuItems']);   // unified browse+search
+        Route::get('menu-items',           [PosController::class, 'getMenuItems']);   // alias
         Route::get('today-orders',         [PosController::class, 'todayOrders']);
+        Route::post('order',               [PosController::class, 'placeOrder']);     // singular alias (frontend uses this)
         Route::post('orders',              [PosController::class, 'placeOrder']);
         Route::post('orders/{order}/pay',  [PosController::class, 'processPayment']);
         Route::post('orders/{order}/split',[PosController::class, 'splitOrder']);
@@ -128,5 +132,36 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('profit-loss',       [ReportController::class, 'profitLoss']);
         Route::get('vat',               [ReportController::class, 'vatReport']);
         Route::get('branch-performance',[ReportController::class, 'branchPerformance']);
+    });
+
+    // ── Accounting ────────────────────────────────────────────────────────
+    Route::prefix('accounting')->group(function () {
+        Route::get('expenses',                    [AccountingController::class, 'getExpenses']);
+        Route::post('expenses',                   [AccountingController::class, 'storeExpense']);
+        Route::get('expense-categories',          [AccountingController::class, 'getExpenseCategories']);
+        Route::get('journals',                    [AccountingController::class, 'getJournalEntries']);
+        Route::get('accounts',                    [AccountingController::class, 'getAccounts']);
+        Route::get('trial-balance',               [AccountingController::class, 'trialBalance']);
+        Route::get('profit-loss',                 [AccountingController::class, 'profitLoss']);
+    });
+
+    // ── Promotions ────────────────────────────────────────────────────────
+    Route::prefix('promotions')->group(function () {
+        Route::post('/',                          [PromotionController::class, 'storePromotion']);
+        Route::put('{promotion}',                 [PromotionController::class, 'updatePromotion']);
+        Route::patch('{promotion}/toggle',        [PromotionController::class, 'togglePromotion']);
+        Route::get('coupons',                     [PromotionController::class, 'getCoupons']);
+        Route::post('coupons',                    [PromotionController::class, 'storeCoupon']);
+        Route::patch('coupons/{coupon}/toggle',   [PromotionController::class, 'toggleCoupon']);
+        Route::post('loyalty',                    [PromotionController::class, 'updateLoyalty']);
+        Route::get('generate-code',               [PromotionController::class, 'generateCode']);
+    });
+
+    // ── Settings ──────────────────────────────────────────────────────────
+    Route::prefix('settings')->group(function () {
+        Route::put('/',                           [SettingsController::class, 'update']);
+        Route::post('tax-rates',                  [SettingsController::class, 'storeTaxRate']);
+        Route::put('tax-rates/{taxRate}',         [SettingsController::class, 'updateTaxRate']);
+        Route::post('branches',                   [SettingsController::class, 'storeBranch']);
     });
 });

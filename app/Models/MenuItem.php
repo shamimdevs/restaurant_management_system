@@ -33,6 +33,14 @@ class MenuItem extends Model
         'allergens'        => 'array',
     ];
 
+    // Append `price` so frontend always has item.price
+    protected $appends = ['price'];
+
+    public function getPriceAttribute(): float
+    {
+        return $this->base_price;
+    }
+
     // ── Relationships ───────────────────────────────────────────────────
 
     public function company(): BelongsTo    { return $this->belongsTo(Company::class); }

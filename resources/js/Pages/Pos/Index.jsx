@@ -79,10 +79,11 @@ export default function PosIndex({ categories: initialCategories, tables, todayO
     const loadItems = useCallback(async (categoryId, searchTerm = '') => {
         setLoadingItems(true);
         try {
-            const { data } = await api.get('/pos/items', {
-                params: { category_id: categoryId, search: searchTerm, per_page: 50 },
-            });
-            setItems(data.data || data);
+            const params = {};
+            if (searchTerm) params.search = searchTerm;
+            else if (categoryId) params.category_id = categoryId;
+            const { data } = await api.get('/pos/items', { params });
+            setItems(Array.isArray(data) ? data : (data.data || []));
         } catch {
             dispatch(notify('Failed to load menu items', 'error'));
         } finally {
@@ -147,12 +148,12 @@ export default function PosIndex({ categories: initialCategories, tables, todayO
 
         setPlacingOrder(true);
         try {
-            const { data } = await api.post('/pos/order', {
+            const { data } = await api.post('/pos/orders', {
                 order_type: orderType,
                 table_session_id: selectedTable?.session?.id || null,
                 customer_id: customer?.id || null,
                 coupon_code: cart.couponCode,
-                loyalty_points_redeemed: cart.loyaltyPointsToRedeem || 0,
+                loyalty_redeem_points: cart.loyaltyPointsToRedeem || 0,
                 notes: cart.notes,
                 items: cartItems.map(i => ({
                     menu_item_id: i.menuItemId,

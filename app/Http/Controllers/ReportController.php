@@ -14,7 +14,7 @@ class ReportController extends Controller
 
     public function dashboard(Request $request): Response
     {
-        $branchId = $request->user()->branch_id;
+        $branchId = $request->user()->effectiveBranchId();
         $today    = now()->toDateString();
 
         return Inertia::render('Reports/Dashboard', [
@@ -28,7 +28,7 @@ class ReportController extends Controller
         $request->validate(['from' => 'required|date', 'to' => 'required|date|after_or_equal:from']);
 
         $data = $this->reportService->getSalesReport(
-            $request->user()->branch_id,
+            $request->user()->effectiveBranchId(),
             $request->from,
             $request->to
         );
@@ -41,7 +41,7 @@ class ReportController extends Controller
         $request->validate(['from' => 'required|date', 'to' => 'required|date', 'limit' => 'nullable|integer']);
 
         $items = $this->reportService->getTopItems(
-            $request->user()->branch_id,
+            $request->user()->effectiveBranchId(),
             $request->from,
             $request->to,
             $request->limit ?? 10
@@ -54,7 +54,7 @@ class ReportController extends Controller
     {
         $request->validate(['from' => 'required|date', 'to' => 'required|date']);
 
-        $data = $this->reportService->getExpenseReport($request->user()->branch_id, $request->from, $request->to);
+        $data = $this->reportService->getExpenseReport($request->user()->effectiveBranchId(), $request->from, $request->to);
         return response()->json($data);
     }
 
@@ -62,7 +62,7 @@ class ReportController extends Controller
     {
         $request->validate(['from' => 'required|date', 'to' => 'required|date']);
 
-        $data = $this->reportService->getProfitLoss($request->user()->branch_id, $request->from, $request->to);
+        $data = $this->reportService->getProfitLoss($request->user()->effectiveBranchId(), $request->from, $request->to);
         return response()->json($data);
     }
 
@@ -70,7 +70,7 @@ class ReportController extends Controller
     {
         $request->validate(['from' => 'required|date', 'to' => 'required|date']);
 
-        $data = $this->reportService->getVatReport($request->user()->branch_id, $request->from, $request->to);
+        $data = $this->reportService->getVatReport($request->user()->effectiveBranchId(), $request->from, $request->to);
         return response()->json($data);
     }
 

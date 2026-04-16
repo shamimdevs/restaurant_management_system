@@ -164,6 +164,31 @@ class AccountingService
         return ['rows' => $rows, 'total_debit' => $totalDebit, 'total_credit' => $totalCredit];
     }
 
+    /**
+     * Profit & Loss summary for a date range.
+     */
+    public function getProfitLoss(int $companyId, string $from, string $to): array
+    {
+        $income = DB::table('orders')
+            ->whereIn('branch_id', fn ($q) => $q->select('id')->from('branches')->where('company_id', $companyId))
+            ->where('status', 'completed')
+            ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
+            ->sum('total_amount');
+
+        $expenses = DB::table('expenses')
+            ->whereIn('branch_id', fn ($q) => $q->select('id')->from('branches')->where('company_id', $companyId))
+            ->whereBetween('expense_date', [$from, $to])
+            ->sum('amount');
+
+        return [
+            'from'       => $from,
+            'to'         => $to,
+            'income'     => round((float)$income, 2),
+            'expenses'   => round((float)$expenses, 2),
+            'net_profit' => round((float)$income - (float)$expenses, 2),
+        ];
+    }
+
     // ── Private ──────────────────────────────────────────────────────────
 
     private function getPaymentAccount(string $method, int $companyId): ?Account

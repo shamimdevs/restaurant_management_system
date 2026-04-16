@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             TaxSeeder::class,             // Bangladesh VAT rates
             AccountChartSeeder::class,    // Chart of Accounts (COA)
             UnitSeeder::class,            // kg, L, pc, dozen …
+            DemoDataSeeder::class,        // menu, tables, customers, orders, employees
         ]);
     }
 }

@@ -19,6 +19,14 @@ class KitchenTicketItem extends Model
         'completed_at' => 'datetime',
     ];
 
+    // Alias for frontend compatibility
+    protected $appends = ['name'];
+
+    public function getNameAttribute(): string
+    {
+        return $this->item_name ?? '';
+    }
+
     public function ticket(): BelongsTo    { return $this->belongsTo(KitchenTicket::class, 'kitchen_ticket_id'); }
     public function orderItem(): BelongsTo { return $this->belongsTo(OrderItem::class); }
 }

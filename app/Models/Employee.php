@@ -30,6 +30,8 @@ class Employee extends Model
 
     protected $hidden = ['bank_account', 'nid_number'];
 
+    protected $appends = ['role', 'is_active'];
+
     public function user(): BelongsTo          { return $this->belongsTo(User::class); }
     public function branch(): BelongsTo        { return $this->belongsTo(Branch::class); }
     public function department(): BelongsTo    { return $this->belongsTo(Department::class); }
@@ -43,6 +45,18 @@ class Employee extends Model
     }
 
     public function scopeActive($query) { return $query->where('status', 'active'); }
+
+    /** Frontend uses emp.role to display role badge */
+    public function getRoleAttribute(): string
+    {
+        return $this->designation?->name ?? $this->department?->name ?? 'Staff';
+    }
+
+    /** Frontend uses emp.is_active */
+    public function getIsActiveAttribute(): bool
+    {
+        return $this->status === 'active';
+    }
 
     public function getTodayAttendanceAttribute(): ?Attendance
     {

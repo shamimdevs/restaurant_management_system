@@ -17,8 +17,9 @@ class MenuController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id;
-        $branchId  = $request->user()->branch_id;
+        $user      = $request->user();
+        $companyId = $user->company_id;
+        $branchId  = $user->effectiveBranchId();
 
         $categories = Category::where('company_id', $companyId)
             ->forBranch($branchId ?? 0)

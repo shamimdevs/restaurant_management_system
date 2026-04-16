@@ -15,7 +15,9 @@ class TableController extends Controller
 {
     public function index(Request $request): Response
     {
-        $branchId  = $request->user()->branch_id;
+        $user     = $request->user();
+        $branchId = $user->branch_id ?? \App\Models\Branch::where('company_id', $user->company_id)->where('is_active', true)->value('id');
+
         $floorPlans = FloorPlan::where('branch_id', $branchId)
             ->with(['tables' => fn ($q) => $q->where('is_active', true)->with('activeSession')])
             ->where('is_active', true)

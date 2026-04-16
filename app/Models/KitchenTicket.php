@@ -31,7 +31,7 @@ class KitchenTicket extends Model
     public function scopePending($query)  { return $query->where('status', 'pending'); }
     public function scopeActive($query)
     {
-        return $query->whereIn('status', ['pending', 'cooking']);
+        return $query->whereIn('status', ['pending', 'cooking', 'ready']);
     }
 
     // ── Status transitions ───────────────────────────────────────────────

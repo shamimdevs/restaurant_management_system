@@ -17,8 +17,9 @@ class EmployeeController extends Controller
 {
     public function index(Request $request): Response
     {
+        $branchId  = $request->user()->effectiveBranchId();
         $employees = Employee::with(['department', 'designation'])
-            ->where('branch_id', $request->user()->branch_id)
+            ->where('branch_id', $branchId)
             ->active()
             ->orderBy('name')
             ->get();
@@ -26,28 +27,59 @@ class EmployeeController extends Controller
         return Inertia::render('Employees/Index', ['employees' => $employees]);
     }
 
-    public function store(StoreEmployeeRequest $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
-        $data = $request->validated();
+        $request->validate([
+            'name'         => 'required|string|max:150',
+            'phone'        => 'required|string|max:20',
+            'email'        => 'nullable|email',
+            'nid'          => 'nullable|string|max:30',
+            'role'         => 'nullable|string|max:100',
+            'joining_date' => 'nullable|date',
+            'basic_salary' => 'nullable|numeric|min:0',
+            'address'      => 'nullable|string',
+        ]);
 
-        if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('employees', 'public');
+        $user     = $request->user();
+        $branchId = $user->effectiveBranchId();
+
+        // Resolve designation from role string
+        $designationId = null;
+        if ($request->filled('role')) {
+            $designation   = \App\Models\Designation::whereRaw('LOWER(name) = ?', [strtolower($request->role)])->first();
+            $designationId = $designation?->id;
+            if (! $designationId) {
+                $designation   = \App\Models\Designation::create(['name' => $request->role]);
+                $designationId = $designation->id;
+            }
         }
 
-        $employee = Employee::create(array_merge($data, [
-            'branch_id'   => $request->user()->branch_id,
-            'employee_id' => $this->generateEmployeeId($request->user()->branch_id),
-        ]));
+        // Default department (Operations)
+        $departmentId = \App\Models\Department::first()?->id;
 
-        // Create salary structure if provided
+        $employee = Employee::create([
+            'branch_id'      => $branchId,
+            'department_id'  => $departmentId,
+            'designation_id' => $designationId,
+            'employee_id'    => $this->generateEmployeeId($branchId),
+            'name'           => $request->name,
+            'phone'          => $request->phone,
+            'email'          => $request->email,
+            'nid_number'     => $request->nid,
+            'joining_date'   => $request->joining_date ?? today(),
+            'basic_salary'   => $request->basic_salary ?? 0,
+            'address'        => $request->address,
+            'status'         => 'active',
+        ]);
+
         if ($request->filled('basic_salary')) {
             SalaryStructure::create([
                 'employee_id'    => $employee->id,
                 'basic_salary'   => $request->basic_salary,
-                'allowances'     => $request->allowances ?? [],
-                'deductions'     => $request->deductions ?? [],
-                'gross_salary'   => $request->basic_salary + collect($request->allowances ?? [])->sum('amount'),
-                'net_salary'     => $request->basic_salary + collect($request->allowances ?? [])->sum('amount') - collect($request->deductions ?? [])->sum('amount'),
+                'allowances'     => [],
+                'deductions'     => [],
+                'gross_salary'   => $request->basic_salary,
+                'net_salary'     => $request->basic_salary,
                 'effective_from' => $request->joining_date ?? today(),
                 'is_current'     => true,
             ]);
@@ -74,8 +106,42 @@ class EmployeeController extends Controller
 
     public function markAttendance(Request $request): JsonResponse
     {
+        $branchId = $request->user()->effectiveBranchId();
+
+        // ── Simple single-event format from frontend: { employee_id, type, time, notes } ──
+        if ($request->has('type')) {
+            $request->validate([
+                'employee_id' => 'required|exists:employees,id',
+                'type'        => 'required|in:check_in,check_out,break_start,break_end',
+                'time'        => 'nullable|date_format:H:i',
+                'notes'       => 'nullable|string',
+            ]);
+
+            $time   = $request->time ?? now()->format('H:i');
+            $record = Attendance::firstOrNew(
+                ['employee_id' => $request->employee_id, 'date' => today()]
+            );
+            $record->branch_id = $branchId;
+            if (! $record->status) $record->status = 'present';
+
+            if ($request->type === 'check_in') {
+                $record->check_in = $time;
+            } elseif ($request->type === 'check_out') {
+                $record->check_out = $time;
+                if ($record->check_in) {
+                    $in  = \Carbon\Carbon::createFromFormat('H:i', $record->check_in);
+                    $out = \Carbon\Carbon::createFromFormat('H:i', $time);
+                    $record->hours_worked = round($in->floatDiffInHours($out), 2);
+                }
+            }
+            $record->save();
+
+            return response()->json(['message' => 'Attendance recorded.']);
+        }
+
+        // ── Bulk records format: { records: [...] } ──
         $request->validate([
-            'records' => 'required|array',
+            'records'               => 'required|array',
             'records.*.employee_id' => 'required|exists:employees,id',
             'records.*.status'      => 'required|in:present,absent,late,half_day,leave,holiday',
             'records.*.check_in'    => 'nullable|date_format:H:i',
@@ -93,8 +159,8 @@ class EmployeeController extends Controller
             Attendance::updateOrCreate(
                 ['employee_id' => $record['employee_id'], 'date' => today()],
                 array_merge($record, [
-                    'branch_id'   => $request->user()->branch_id,
-                    'hours_worked'=> $hoursWorked,
+                    'branch_id'    => $branchId,
+                    'hours_worked' => $hoursWorked,
                 ])
             );
         }

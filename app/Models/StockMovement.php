@@ -14,6 +14,8 @@ class StockMovement extends Model
         'reference_type', 'reference_id', 'user_id', 'notes', 'movement_date',
     ];
 
+    protected $appends = ['movement_type', 'balance_after'];
+
     protected $casts = [
         'quantity'      => 'float',
         'unit_cost'     => 'float',
@@ -29,7 +31,23 @@ class StockMovement extends Model
     public function user(): BelongsTo       { return $this->belongsTo(User::class); }
     public function reference(): MorphTo    { return $this->morphTo(); }
 
-    public function scopeForBranch($query, int $branchId) { return $query->where('branch_id', $branchId); }
+    public function scopeForBranch($query, ?int $branchId) { return $query->where('branch_id', $branchId); }
+
+    /** Frontend expects movement_type ('in' | 'out' | 'adjustment') */
+    public function getMovementTypeAttribute(): string
+    {
+        return match ($this->type) {
+            'purchase', 'receipt', 'return_in', 'opening_stock', 'adjustment_in' => 'in',
+            'usage', 'waste', 'spoilage', 'transfer_out', 'adjustment_out'        => 'out',
+            default                                                                => 'adjustment',
+        };
+    }
+
+    /** Frontend expects balance_after instead of stock_after */
+    public function getBalanceAfterAttribute(): float
+    {
+        return (float) $this->stock_after;
+    }
     public function scopeDateRange($query, string $from, string $to)
     {
         return $query->whereBetween('movement_date', [$from, $to]);

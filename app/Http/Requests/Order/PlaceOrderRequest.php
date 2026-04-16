@@ -11,7 +11,7 @@ class PlaceOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'branch_id'                      => 'required|integer|exists:branches,id',
+            'branch_id'                      => 'nullable|integer|exists:branches,id',
             'order_type'                     => 'required|in:dine_in,takeaway,delivery,qr_order',
             'table_session_id'               => 'nullable|integer|exists:table_sessions,id',
             'customer_id'                    => 'nullable|integer|exists:customers,id',

@@ -99,6 +99,20 @@ class User extends Authenticatable
     }
 
     /**
+     * Return the effective branch ID for this user.
+     * Super-admins (branch_id = null) fall back to the first active branch.
+     */
+    public function effectiveBranchId(): ?int
+    {
+        if (! is_null($this->branch_id)) {
+            return $this->branch_id;
+        }
+        return Branch::where('company_id', $this->company_id)
+            ->where('is_active', true)
+            ->value('id');
+    }
+
+    /**
      * Get all permission names for this user (cached per request).
      */
     public function allPermissions(): array

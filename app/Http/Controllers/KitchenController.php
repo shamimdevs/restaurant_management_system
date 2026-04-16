@@ -15,22 +15,37 @@ class KitchenController extends Controller
      */
     public function index(Request $request): Response
     {
-        return Inertia::render('Kitchen/Display', [
-            'branch_id' => $request->user()->branch_id,
+        $user = $request->user();
+        return Inertia::render('Kitchen/Index', [
+            'branch_id' => $user->effectiveBranchId(),
         ]);
     }
 
     /**
      * Get active tickets for a branch (polling endpoint).
+     * Returns pending + cooking + ready tickets.
      */
     public function getTickets(Request $request): JsonResponse
     {
+        $branchId = $request->user()->effectiveBranchId();
+
         $tickets = KitchenTicket::active()
-            ->where('branch_id', $request->user()->branch_id)
-            ->with(['items', 'order:id,order_number,order_type,notes'])
+            ->where('branch_id', $branchId)
+            ->with([
+                'items',
+                'order:id,order_number,order_type,notes,table_session_id',
+                'order.tableSession.table:id,table_number',
+            ])
             ->orderBy('priority')
             ->orderBy('created_at')
-            ->get();
+            ->get()
+            ->map(function ($ticket) {
+                // Flatten table info onto the order for easy frontend access
+                if ($ticket->order && $ticket->order->tableSession?->table) {
+                    $ticket->order->setRelation('table', $ticket->order->tableSession->table);
+                }
+                return $ticket;
+            });
 
         return response()->json($tickets);
     }
@@ -77,8 +92,8 @@ class KitchenController extends Controller
             'completed_at' => $request->status === 'ready'   ? now() : $item->completed_at,
         ]);
 
-        // If all items are ready, auto-mark ticket as ready
-        if ($ticket->items()->where('status', '!=', 'ready')->where('status', '!=', 'cancelled')->doesntExist()) {
+        // Auto-mark ticket ready when all items are done
+        if ($ticket->items()->whereNotIn('status', ['ready', 'cancelled'])->doesntExist()) {
             $ticket->markReady();
         }
 
