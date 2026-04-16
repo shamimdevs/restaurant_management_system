@@ -1,59 +1,322 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🍽️ Restaurant Management System (Bangladesh SaaS)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A complete **enterprise-level multi-branch restaurant management system** built for Bangladeshi businesses using modern technologies.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Tech Stack
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Backend
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Laravel (Latest) 
+- MySQL
+- Laravel Sanctum (Authentication)
 
-## Learning Laravel
+### Frontend
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- React.js (with Inertia.js)
+- Redux Toolkit (State Management)
+- Tailwind CSS (UI Styling)
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## 🎯 Key Features
 
-## Agentic Development
+### 🧾 POS (Point of Sale)
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+- Dine-in / Takeaway / Delivery
+- Split billing
+- Discount (Fixed & Percentage)
+- VAT calculation (5%, 7.5%, 10%)
+- Payment methods:
+    - Cash
+    - Card
+    - bKash / Nagad / Rocket
 
-```bash
-composer require laravel/boost --dev
+---
 
-php artisan boost:install
+### 🏢 Multi-Branch System
+
+- One company → multiple branches
+- Each branch has:
+    - Separate inventory
+    - Separate employees
+    - Independent reports
+
+---
+
+### 🍽️ Table & QR Ordering
+
+- Unique QR code for each table
+- Customers scan → view menu → place order
+- Real-time order submission
+
+---
+
+### 🍳 Kitchen Display System (KDS)
+
+- Live order tracking
+- Status:
+    - Pending
+    - Cooking
+    - Ready
+
+---
+
+### 📦 Inventory Management
+
+- Raw materials tracking
+- Recipe-based deduction
+- Auto stock reduction
+- Low stock alerts
+
+---
+
+### 💰 Accounting System
+
+- Income & Expense tracking
+- Ledger system:
+    - Customer Ledger
+    - Supplier Ledger
+
+- Trial Balance
+- Profit & Loss
+- Cash flow tracking
+
+---
+
+### 👨‍💼 Employee Management
+
+- Role-based access:
+    - Admin
+    - Manager
+    - Cashier
+    - Waiter
+    - Kitchen Staff
+
+- Attendance tracking
+- Salary management
+
+---
+
+### 🎁 Offers & Promotions
+
+- Coupon system
+- Buy 1 Get 1
+- Discount rules
+- Loyalty points
+
+---
+
+### 👤 Customer CRM
+
+- Customer profiles
+- Order history
+- Loyalty tracking
+
+---
+
+### 📊 Reports & Analytics
+
+- Daily sales reports
+- Branch performance
+- Top selling items
+- Expense reports
+
+---
+
+### 🇧🇩 VAT & Tax (Bangladesh)
+
+- Configurable VAT rates
+- VAT reports
+- Bangladesh-compliant calculation
+
+---
+
+## 🎨 UI Design System
+
+- Light SaaS dashboard style
+- Tailwind CSS based
+- Color Palette:
+    - Primary: Purple → Indigo → Blue gradient
+    - Accent: Teal / Cyan
+    - Background: `#F8FAFC`
+    - Cards: White with soft shadows
+
+- Components:
+    - Rounded cards (`rounded-2xl`)
+    - Gradient buttons
+    - KPI dashboard widgets
+
+---
+
+## 🔐 Authentication & Authorization
+
+- Laravel Sanctum (API auth)
+- Role-Based Access Control (RBAC)
+- Branch-level data restriction
+
+---
+
+## ⚡ Performance Optimization
+
+- Eager loading (Laravel ORM)
+- Query optimization
+- Caching (Redis recommended)
+- Lazy loading on frontend
+
+---
+
+## 🔄 System Flow
+
+Customer → Order → Kitchen → Serve → Payment → Accounting → Reports
+
+---
+
+## 🧠 Project Structure
+
+```
+backend/
+├── app/
+│   ├── Models/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   ├── Requests/
+│   ├── Services/
+│   ├── Events/
+│   ├── Listeners/
+│
+├── database/
+│   ├── migrations/
+│   ├── seeders/
+
+frontend/
+├── resources/js/
+│   ├── Pages/
+│   ├── Components/
+│   ├── Layouts/
+│   ├── Redux/
+│
+├── routes/
+│   ├── web.php
+│   ├── api.php
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+## ⚙️ Installation Guide
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 1. Clone Project
 
-## Code of Conduct
+```bash
+git clone <repo-url>
+cd restaurant-management
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+### 2. Backend Setup (Laravel)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+```
 
-## License
+Update `.env`:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-# restaurant_management_system
+```
+DB_DATABASE=restaurant
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+```bash
+php artisan migrate
+php artisan serve
+```
+
+---
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## 🔌 API Authentication (Sanctum)
+
+- Login → get token
+- Use token in headers:
+
+```
+Authorization: Bearer <token>
+```
+
+---
+
+## 📡 Real-time Features
+
+Recommended:
+
+- Laravel Broadcasting (Pusher / WebSockets)
+
+Fallback:
+
+- Polling (API interval calls)
+
+---
+
+## 🧪 Testing
+
+```bash
+php artisan test
+```
+
+---
+
+## 📦 Deployment
+
+### Backend
+
+- Nginx / Apache
+- PHP 8.2+
+- MySQL
+
+### Frontend
+
+- Build:
+
+```bash
+npm run build
+```
+
+---
+
+## 🔥 Future Enhancements
+
+- Mobile App (React Native)
+- AI Sales Insights
+- Advanced analytics dashboard
+- Multi-tenant SaaS billing system
+
+---
+
+## 👨‍💻 Author
+
+Built for Bangladeshi Restaurant Businesses 🇧🇩
+
+---
+
+## 📄 License
+
+This project is proprietary / commercial SaaS.
+
+---
+
+✨ Ready to scale your restaurant business with technology!
