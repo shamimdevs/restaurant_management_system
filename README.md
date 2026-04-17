@@ -7,7 +7,7 @@ A complete **enterprise-level multi-branch restaurant management system** built 
 ## 🚀 Tech Stack
 
 ### Backend
-
+![Backend Tech Stack](https://res.cloudinary.com/dutnv7ziz/image/upload/v1776404187/Screenshot_2026-04-17_101649_rhhebm.png)
 - Laravel (Latest) 
 - MySQL
 - Laravel Sanctum (Authentication)
