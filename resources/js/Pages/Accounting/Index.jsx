@@ -130,6 +130,8 @@ export default function AccountingIndex({ summary = {} }) {
     const [tab, setTab]             = useState('overview');
     const [expenses, setExpenses]   = useState([]);
     const [journals, setJournals]   = useState([]);
+    const [accounts, setAccounts]   = useState([]);
+    const [plResult, setPlResult]   = useState(null);
     const [loading, setLoading]     = useState(false);
     const [expenseModal, setExpenseModal] = useState(false);
     const [dateFrom, setDateFrom]   = useState(new Date().toISOString().slice(0,8) + '01');
@@ -151,8 +153,15 @@ export default function AccountingIndex({ summary = {} }) {
         setJournals(res.data.data || []);
     }, [tab, dateFrom, dateTo]);
 
+    const fetchAccounts = useCallback(async () => {
+        if (tab !== 'accounts') return;
+        const res = await axios.get('/api/accounting/accounts');
+        setAccounts(res.data || []);
+    }, [tab]);
+
     useEffect(() => { if (tab === 'expenses') fetchExpenses(); }, [tab, fetchExpenses]);
     useEffect(() => { fetchJournals(); }, [fetchJournals]);
+    useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
     const pieData = (summary.expense_by_cat || []).map((c, i) => ({
         name: c.category,
@@ -414,10 +423,55 @@ export default function AccountingIndex({ summary = {} }) {
 
                 {/* Chart of Accounts */}
                 {tab === 'accounts' && (
-                    <div className="p-6 text-center">
-                        <CreditCard className="w-12 h-12 text-violet-200 mx-auto mb-3" />
-                        <p className="text-gray-600 font-medium">Chart of Accounts</p>
-                        <p className="text-gray-400 text-sm">Configured accounts for double-entry bookkeeping</p>
+                    <div className="p-4">
+                        {accounts.length === 0 ? (
+                            <div className="py-12 text-center">
+                                <CreditCard className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                                <p className="text-gray-500">No accounts configured</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                                            <th className="pb-2 font-medium">Code</th>
+                                            <th className="pb-2 font-medium">Account Name</th>
+                                            <th className="pb-2 font-medium">Group</th>
+                                            <th className="pb-2 font-medium">Type</th>
+                                            <th className="pb-2 font-medium">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {accounts.map(acc => (
+                                            <tr key={acc.id} className="hover:bg-gray-50/50">
+                                                <td className="py-2.5 pr-4 font-mono text-xs text-gray-500">{acc.code}</td>
+                                                <td className="py-2.5 pr-4 font-medium text-gray-800">{acc.name}</td>
+                                                <td className="py-2.5 pr-4 text-gray-600">{acc.group?.name || '—'}</td>
+                                                <td className="py-2.5 pr-4">
+                                                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium capitalize',
+                                                        acc.group?.account_type === 'asset'     ? 'bg-blue-100 text-blue-700' :
+                                                        acc.group?.account_type === 'liability'  ? 'bg-red-100 text-red-700' :
+                                                        acc.group?.account_type === 'equity'     ? 'bg-purple-100 text-purple-700' :
+                                                        acc.group?.account_type === 'revenue'    ? 'bg-emerald-100 text-emerald-700' :
+                                                        acc.group?.account_type === 'expense'    ? 'bg-amber-100 text-amber-700' :
+                                                        'bg-gray-100 text-gray-600'
+                                                    )}>
+                                                        {acc.group?.account_type || '—'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-2.5">
+                                                    <span className={cn('text-xs px-2 py-0.5 rounded-full',
+                                                        acc.is_active !== false ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                                                    )}>
+                                                        {acc.is_active !== false ? 'Active' : 'Inactive'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -428,54 +482,72 @@ export default function AccountingIndex({ summary = {} }) {
                             <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
                             <Input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)} />
                             <Button size="sm" variant="outline" onClick={async () => {
-                                const res = await axios.get('/api/accounting/profit-loss', { params: { from: dateFrom, to: dateTo } });
-                                // handle data
-                            }}>
+                                setLoading(true);
+                                try {
+                                    const res = await axios.get('/api/accounting/profit-loss', { params: { from: dateFrom, to: dateTo } });
+                                    setPlResult(res.data);
+                                } finally { setLoading(false); }
+                            }} loading={loading}>
                                 <BarChart3 className="w-4 h-4" /> Generate
                             </Button>
                         </div>
-                        <div className="bg-gray-50 rounded-xl p-5">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="text-left font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                                        <th className="pb-3">Account</th>
-                                        <th className="pb-3 text-right">Amount (৳)</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    <tr className="bg-emerald-50/50">
-                                        <td colSpan={2} className="py-2 px-2 font-semibold text-emerald-800 text-xs uppercase tracking-wide">Revenue</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2 pl-4 text-gray-700">Food & Beverage Sales</td>
-                                        <td className="py-2 text-right font-medium text-emerald-700">{formatCurrency(summary.total_income ?? 0)}</td>
-                                    </tr>
-                                    <tr className="font-semibold text-gray-800">
-                                        <td className="py-2">Total Revenue</td>
-                                        <td className="py-2 text-right text-emerald-700">{formatCurrency(summary.total_income ?? 0)}</td>
-                                    </tr>
-                                    <tr className="bg-red-50/50">
-                                        <td colSpan={2} className="py-2 px-2 font-semibold text-red-800 text-xs uppercase tracking-wide">Expenses</td>
-                                    </tr>
-                                    {(summary.expense_by_cat || []).map((c, i) => (
-                                        <tr key={i}>
-                                            <td className="py-2 pl-4 text-gray-700">{c.category}</td>
-                                            <td className="py-2 text-right text-red-600">({formatCurrency(c.total)})</td>
+                        {!plResult ? (
+                            <div className="py-12 text-center">
+                                <BarChart3 className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                                <p className="text-gray-500">Select date range and click Generate</p>
+                            </div>
+                        ) : (
+                            <div className="bg-gray-50 rounded-xl p-5">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left font-semibold text-gray-800 border-b border-gray-200 pb-2">
+                                            <th className="pb-3">Account</th>
+                                            <th className="pb-3 text-right">Amount (৳)</th>
                                         </tr>
-                                    ))}
-                                    <tr className="font-semibold text-gray-800 border-t border-gray-200">
-                                        <td className="py-2">Total Expenses</td>
-                                        <td className="py-2 text-right text-red-600">({formatCurrency(summary.total_expense ?? 0)})</td>
-                                    </tr>
-                                    <tr className="font-bold text-gray-900 border-t-2 border-gray-300 bg-violet-50/50">
-                                        <td className="py-3">Net Profit / (Loss)</td>
-                                        <td className={cn('py-3 text-right text-lg', (summary.net_profit ?? 0) >= 0 ? 'text-emerald-700' : 'text-red-700')}>
-                                            {formatCurrency(summary.net_profit ?? 0)}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        <tr className="bg-emerald-50/50">
+                                            <td colSpan={2} className="py-2 px-2 font-semibold text-emerald-800 text-xs uppercase tracking-wide">Revenue</td>
+                                        </tr>
+                                        {(plResult.revenue_lines || []).map((r, i) => (
+                                            <tr key={i}>
+                                                <td className="py-2 pl-4 text-gray-700">{r.account}</td>
+                                                <td className="py-2 text-right font-medium text-emerald-700">{formatCurrency(r.amount)}</td>
+                                            </tr>
+                                        ))}
+                                        {!(plResult.revenue_lines?.length) && (
+                                            <tr>
+                                                <td className="py-2 pl-4 text-gray-700">Food & Beverage Sales</td>
+                                                <td className="py-2 text-right font-medium text-emerald-700">{formatCurrency(plResult.total_income ?? plResult.income ?? 0)}</td>
+                                            </tr>
+                                        )}
+                                        <tr className="font-semibold text-gray-800">
+                                            <td className="py-2">Total Revenue</td>
+                                            <td className="py-2 text-right text-emerald-700">{formatCurrency(plResult.total_income ?? plResult.income ?? 0)}</td>
+                                        </tr>
+                                        <tr className="bg-red-50/50">
+                                            <td colSpan={2} className="py-2 px-2 font-semibold text-red-800 text-xs uppercase tracking-wide">Expenses</td>
+                                        </tr>
+                                        {(plResult.expense_by_cat || plResult.expense_lines || []).map((c, i) => (
+                                            <tr key={i}>
+                                                <td className="py-2 pl-4 text-gray-700">{c.category || c.account}</td>
+                                                <td className="py-2 text-right text-red-600">({formatCurrency(c.total ?? c.amount)})</td>
+                                            </tr>
+                                        ))}
+                                        <tr className="font-semibold text-gray-800 border-t border-gray-200">
+                                            <td className="py-2">Total Expenses</td>
+                                            <td className="py-2 text-right text-red-600">({formatCurrency(plResult.total_expense ?? plResult.expenses ?? 0)})</td>
+                                        </tr>
+                                        <tr className="font-bold text-gray-900 border-t-2 border-gray-300 bg-violet-50/50">
+                                            <td className="py-3">Net Profit / (Loss)</td>
+                                            <td className={cn('py-3 text-right text-lg', (plResult.net_profit ?? 0) >= 0 ? 'text-emerald-700' : 'text-red-700')}>
+                                                {formatCurrency(plResult.net_profit ?? 0)}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

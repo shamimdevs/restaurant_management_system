@@ -38,7 +38,7 @@ class TableController extends Controller
         ]);
 
         $table = RestaurantTable::create([
-            'branch_id'    => $request->user()->branch_id,
+            'branch_id'    => $request->user()->effectiveBranchId(),
             'floor_plan_id'=> $request->floor_plan_id,
             'table_number' => $request->table_number,
             'name'         => $request->name,

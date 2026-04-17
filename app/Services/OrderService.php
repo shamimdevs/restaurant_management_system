@@ -111,9 +111,13 @@ class OrderService
 
             // ── 9. Create Order Items ───────────────────────────────────
             foreach ($itemLines as $line) {
-                $orderItem = OrderItem::create(array_merge(['order_id' => $order->id], $line));
+                $modifiers = $line['modifiers'] ?? [];
+                $orderItem = OrderItem::create(array_merge(
+                    ['order_id' => $order->id],
+                    array_diff_key($line, ['modifiers' => null])
+                ));
 
-                foreach ($line['modifiers'] as $mod) {
+                foreach ($modifiers as $mod) {
                     OrderItemModifier::create(array_merge(['order_item_id' => $orderItem->id], $mod));
                 }
             }

@@ -16,7 +16,7 @@ class PlaceOrderRequest extends FormRequest
             'table_session_id'               => 'nullable|integer|exists:table_sessions,id',
             'customer_id'                    => 'nullable|integer|exists:customers,id',
             'coupon_code'                    => 'nullable|string|max:50',
-            'loyalty_redeem_points'          => 'nullable|integer|min:1',
+            'loyalty_redeem_points'          => 'nullable|integer|min:0',
             'notes'                          => 'nullable|string|max:500',
             'delivery_address'               => 'nullable|string',
             'delivery_area'                  => 'nullable|string|max:100',

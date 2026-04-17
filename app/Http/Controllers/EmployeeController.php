@@ -17,12 +17,27 @@ class EmployeeController extends Controller
 {
     public function index(Request $request): Response
     {
-        $branchId  = $request->user()->effectiveBranchId();
-        $employees = Employee::with(['department', 'designation'])
-            ->where('branch_id', $branchId)
-            ->active()
-            ->orderBy('name')
-            ->get();
+        $user = $request->user();
+
+        if ($user->isSuperAdmin()) {
+            // Admin sees all branches unless a specific branch is selected
+            $branchIds = app()->has('active_branch_id')
+                ? [app('active_branch_id')]
+                : \App\Models\Branch::where('company_id', $user->company_id)->pluck('id')->toArray();
+
+            $employees = Employee::with(['department', 'designation', 'branch:id,name'])
+                ->whereIn('branch_id', $branchIds)
+                ->active()
+                ->orderBy('name')
+                ->get();
+        } else {
+            $branchId  = $user->effectiveBranchId();
+            $employees = Employee::with(['department', 'designation'])
+                ->where('branch_id', $branchId)
+                ->active()
+                ->orderBy('name')
+                ->get();
+        }
 
         return Inertia::render('Employees/Index', ['employees' => $employees]);
     }
@@ -38,10 +53,15 @@ class EmployeeController extends Controller
             'joining_date' => 'nullable|date',
             'basic_salary' => 'nullable|numeric|min:0',
             'address'      => 'nullable|string',
+            'branch_id'    => 'nullable|integer|exists:branches,id',
         ]);
 
-        $user     = $request->user();
-        $branchId = $user->effectiveBranchId();
+        $user = $request->user();
+
+        // Admin can specify branch explicitly; others use their own branch
+        $branchId = ($user->isSuperAdmin() && $request->filled('branch_id'))
+            ? (int) $request->branch_id
+            : $user->effectiveBranchId();
 
         // Resolve designation from role string
         $designationId = null;
@@ -178,6 +198,57 @@ class EmployeeController extends Controller
             ->get();
 
         return response()->json($attendance);
+    }
+
+    // ── Leave Types ──────────────────────────────────────────────────────
+
+    public function getLeaveTypes(Request $request): JsonResponse
+    {
+        $companyId  = $request->user()->company_id;
+        $leaveTypes = \App\Models\LeaveType::where('company_id', $companyId)->orderBy('name')->get();
+
+        if ($leaveTypes->isEmpty()) {
+            $defaults = [
+                ['name' => 'Annual Leave',    'days_allowed_per_year' => 15, 'is_paid' => true],
+                ['name' => 'Sick Leave',      'days_allowed_per_year' => 10, 'is_paid' => true],
+                ['name' => 'Casual Leave',    'days_allowed_per_year' => 7,  'is_paid' => true],
+                ['name' => 'Emergency Leave', 'days_allowed_per_year' => 3,  'is_paid' => false],
+            ];
+            foreach ($defaults as $lt) {
+                \App\Models\LeaveType::create(array_merge($lt, ['company_id' => $companyId]));
+            }
+            $leaveTypes = \App\Models\LeaveType::where('company_id', $companyId)->orderBy('name')->get();
+        }
+
+        return response()->json($leaveTypes);
+    }
+
+    public function getLeaves(Request $request): JsonResponse
+    {
+        $branchId = $request->user()->effectiveBranchId();
+        $leaves   = \App\Models\LeaveRequest::with(['employee:id,name,employee_id', 'leaveType:id,name'])
+            ->whereHas('employee', fn ($q) => $q->where('branch_id', $branchId))
+            ->when($request->employee_id, fn ($q) => $q->where('employee_id', $request->employee_id))
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
+            ->latest()
+            ->paginate(25);
+
+        return response()->json($leaves);
+    }
+
+    public function getPayroll(Request $request): JsonResponse
+    {
+        $branchId = $request->user()->effectiveBranchId();
+        $month    = $request->month ?? now()->month;
+        $year     = $request->year  ?? now()->year;
+
+        $payroll = SalaryPayment::with('employee:id,name,employee_id,basic_salary')
+            ->where('branch_id', $branchId)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->get();
+
+        return response()->json($payroll);
     }
 
     // ── Leave ────────────────────────────────────────────────────────────

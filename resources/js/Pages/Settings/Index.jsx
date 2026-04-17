@@ -179,6 +179,9 @@ export default function SettingsIndex({ settings = {}, taxRates = [], branches =
         enable_kitchen_display: settings.enable_kitchen_display !== 'false',
         auto_print_receipt: settings.auto_print_receipt === 'true',
         service_charge:     settings.service_charge     || '0',
+        allow_split_bill:   settings.allow_split_bill   !== 'false',
+        enable_mobile_payment: settings.enable_mobile_payment !== 'false',
+        loyalty_at_pos:     settings.loyalty_at_pos     === 'true',
     });
     const [saving, setSaving]       = useState(false);
     const [taxModal, setTaxModal]   = useState(false);
@@ -191,9 +194,16 @@ export default function SettingsIndex({ settings = {}, taxRates = [], branches =
     const saveGeneral = async () => {
         setSaving(true);
         try {
-            const payload = { ...form, enable_qr_order: form.enable_qr_order ? 'true' : 'false',
-                enable_kitchen_display: form.enable_kitchen_display ? 'true' : 'false',
-                auto_print_receipt: form.auto_print_receipt ? 'true' : 'false' };
+            const boolToStr = (v) => v ? 'true' : 'false';
+            const payload = {
+                ...form,
+                enable_qr_order:       boolToStr(form.enable_qr_order),
+                enable_kitchen_display: boolToStr(form.enable_kitchen_display),
+                auto_print_receipt:    boolToStr(form.auto_print_receipt),
+                allow_split_bill:      boolToStr(form.allow_split_bill),
+                enable_mobile_payment: boolToStr(form.enable_mobile_payment),
+                loyalty_at_pos:        boolToStr(form.loyalty_at_pos),
+            };
             await axios.put('/api/settings', { settings: payload });
         } finally { setSaving(false); }
     };
@@ -372,13 +382,13 @@ export default function SettingsIndex({ settings = {}, taxRates = [], branches =
                                         className="w-24 text-right" />
                                 </SettingRow>
                                 <SettingRow label="Allow Split Bill" description="Enable split bill feature at POS">
-                                    <Toggle checked={true} onChange={() => {}} />
+                                    <Toggle checked={form.allow_split_bill} onChange={v => set('allow_split_bill', v)} />
                                 </SettingRow>
                                 <SettingRow label="bKash / Nagad" description="Accept mobile payment methods">
-                                    <Toggle checked={true} onChange={() => {}} />
+                                    <Toggle checked={form.enable_mobile_payment} onChange={v => set('enable_mobile_payment', v)} />
                                 </SettingRow>
                                 <SettingRow label="Loyalty Points at POS" description="Allow loyalty point redemption">
-                                    <Toggle checked={false} onChange={() => {}} />
+                                    <Toggle checked={form.loyalty_at_pos} onChange={v => set('loyalty_at_pos', v)} />
                                 </SettingRow>
                             </div>
                             <div className="mt-4">

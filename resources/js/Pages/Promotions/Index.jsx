@@ -14,14 +14,26 @@ import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
 // ── Promotion type badge ───────────────────────────────────────────────────
 const PROMO_TYPES = {
-    percentage: { label: 'Percentage %',  color: 'bg-violet-100 text-violet-700', icon: Percent },
-    fixed:      { label: 'Fixed Amount',  color: 'bg-blue-100 text-blue-700',     icon: DollarSign },
-    bxgy:       { label: 'Buy X Get Y',   color: 'bg-emerald-100 text-emerald-700', icon: Gift },
-    free_item:  { label: 'Free Item',     color: 'bg-amber-100 text-amber-700',   icon: Zap },
+    percentage_discount: { label: 'Percentage %',  color: 'bg-violet-100 text-violet-700', icon: Percent },
+    fixed_discount:      { label: 'Fixed Amount',  color: 'bg-blue-100 text-blue-700',     icon: DollarSign },
+    buy_x_get_y:         { label: 'Buy X Get Y',   color: 'bg-emerald-100 text-emerald-700', icon: Gift },
+    free_item:           { label: 'Free Item',     color: 'bg-amber-100 text-amber-700',   icon: Zap },
+    happy_hour:          { label: 'Happy Hour',    color: 'bg-pink-100 text-pink-700',     icon: Zap },
+    combo:               { label: 'Combo',         color: 'bg-cyan-100 text-cyan-700',     icon: Gift },
 };
 
+// Short-name aliases used in forms
+const PROMO_TYPE_OPTIONS = [
+    { value: 'percentage', label: 'Percentage %' },
+    { value: 'fixed',      label: 'Fixed Amount' },
+    { value: 'bxgy',       label: 'Buy X Get Y' },
+    { value: 'free_item',  label: 'Free Item' },
+    { value: 'happy_hour', label: 'Happy Hour' },
+    { value: 'combo',      label: 'Combo' },
+];
+
 function TypeBadge({ type }) {
-    const t = PROMO_TYPES[type] ?? PROMO_TYPES.fixed;
+    const t = PROMO_TYPES[type] ?? PROMO_TYPES.fixed_discount;
     return (
         <span className={cn('inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-medium', t.color)}>
             <t.icon className="w-3 h-3" />
@@ -46,12 +58,13 @@ function PromoCard({ promo, onToggle }) {
             </div>
             <h3 className="font-semibold text-gray-900 mb-1">{promo.name}</h3>
             <p className="text-2xl font-bold text-violet-600 mb-2">
-                {promo.type === 'percentage' ? `${promo.discount_value}% OFF` :
-                 promo.type === 'fixed' ? `৳${promo.discount_value} OFF` :
-                 promo.type === 'bxgy' ? 'B1G1 Deal' : 'Free Item'}
+                {promo.type === 'percentage_discount' ? `${promo.value}% OFF` :
+                 promo.type === 'fixed_discount' ? `৳${promo.value} OFF` :
+                 promo.type === 'buy_x_get_y' ? 'B1G1 Deal' :
+                 promo.type === 'happy_hour' ? 'Happy Hour' : 'Free Item'}
             </p>
-            {promo.min_order_amount > 0 && (
-                <p className="text-xs text-gray-500">Min order: {formatCurrency(promo.min_order_amount)}</p>
+            {(promo.min_order_value > 0) && (
+                <p className="text-xs text-gray-500">Min order: {formatCurrency(promo.min_order_value)}</p>
             )}
             <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
@@ -88,13 +101,13 @@ function CouponRow({ coupon, onToggle }) {
                 {coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : formatCurrency(coupon.discount_value)}
             </td>
             <td className="px-4 py-3 text-gray-600 text-sm">
-                {coupon.min_order_amount > 0 ? formatCurrency(coupon.min_order_amount) : '—'}
+                {coupon.min_order_value > 0 ? formatCurrency(coupon.min_order_value) : '—'}
             </td>
             <td className="px-4 py-3 text-sm text-gray-600">
                 {coupon.usages_count ?? 0} / {coupon.usage_limit ?? '∞'}
             </td>
             <td className="px-4 py-3 text-sm text-gray-500">
-                {coupon.expires_at ? formatDate(coupon.expires_at) : 'No expiry'}
+                {coupon.valid_until ? formatDate(coupon.valid_until) : 'No expiry'}
             </td>
             <td className="px-4 py-3">
                 <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
@@ -117,8 +130,8 @@ function PromoModal({ onClose, onSaved }) {
     const [form, setForm] = useState({
         name:             '',
         type:             'percentage',
-        discount_value:   '',
-        min_order_amount: '',
+        value:            '',
+        min_order_value:  '',
         start_date:       new Date().toISOString().split('T')[0],
         end_date:         '',
         is_active:        true,
@@ -149,8 +162,8 @@ function PromoModal({ onClose, onSaved }) {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
                         <select value={form.type} onChange={e => set('type', e.target.value)}
                             className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-                            {Object.entries(PROMO_TYPES).map(([k, t]) => (
-                                <option key={k} value={k}>{t.label}</option>
+                            {PROMO_TYPE_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
                             ))}
                         </select>
                     </div>
@@ -159,15 +172,15 @@ function PromoModal({ onClose, onSaved }) {
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 {form.type === 'percentage' ? 'Discount %' : 'Amount (৳)'}
                             </label>
-                            <Input type="number" min={0} step="0.01" value={form.discount_value}
-                                onChange={e => set('discount_value', e.target.value)} />
+                            <Input type="number" min={0} step="0.01" value={form.value}
+                                onChange={e => set('value', e.target.value)} />
                         </div>
                     )}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Order (৳)</label>
-                    <Input type="number" min={0} value={form.min_order_amount}
-                        onChange={e => set('min_order_amount', e.target.value)} placeholder="0 = no minimum" />
+                    <Input type="number" min={0} value={form.min_order_value}
+                        onChange={e => set('min_order_value', e.target.value)} placeholder="0 = no minimum" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -195,13 +208,13 @@ function PromoModal({ onClose, onSaved }) {
 function CouponModal({ onClose, onSaved }) {
     const [form, setForm] = useState({
         code:                  '',
-        discount_type:         'percentage',
-        discount_value:        '',
-        min_order_amount:      '',
-        max_discount_amount:   '',
-        usage_limit:           '',
-        usage_limit_per_user:  1,
-        expires_at:            '',
+        discount_type:              'percentage',
+        discount_value:             '',
+        min_order_amount:           '',
+        max_discount_amount:        '',
+        usage_limit:                '',
+        usage_limit_per_user:       1,
+        expires_at:                 '',
         is_active:             true,
     });
     const [saving, setSaving] = useState(false);
@@ -295,11 +308,11 @@ export default function PromotionsIndex({ promotions = [], coupons = [], loyalty
     const [localPromos, setLocalPromos] = useState(promotions);
     const [localCoupons, setLocalCoupons] = useState(coupons);
     const [loyaltyForm, setLoyaltyForm] = useState({
-        points_per_taka:   loyalty?.points_per_taka   ?? 1,
-        taka_per_point:    loyalty?.taka_per_point    ?? 0.01,
-        min_redeem_points: loyalty?.min_redeem_points ?? 100,
-        expiry_days:       loyalty?.expiry_days       ?? 365,
-        is_active:         loyalty?.is_active         ?? true,
+        points_per_taka:   loyalty?.points_per_currency   ?? 1,
+        taka_per_point:    loyalty?.currency_per_point    ?? 0.01,
+        min_redeem_points: loyalty?.min_redeem_points     ?? 100,
+        expiry_days:       loyalty?.point_expiry_days     ?? 365,
+        is_active:         loyalty?.is_active             ?? true,
     });
     const [loyaltySaving, setLoyaltySaving] = useState(false);
 

@@ -93,7 +93,7 @@ export default function MenuIndex({ categories: initialCategories }) {
 
     const toggleAvailability = async (item) => {
         try {
-            await api.patch(`/menu/items/${item.id}/availability`);
+            await api.patch(`/menu/items/${item.id}/toggle`);
             setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_available: !i.is_available } : i));
         } catch {
             dispatch(notify('Update failed', 'error'));

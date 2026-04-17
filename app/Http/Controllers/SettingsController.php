@@ -26,7 +26,9 @@ class SettingsController extends Controller
             ->pluck('value', 'key')
             ->toArray();
 
-        $taxRates = TaxRate::where('company_id', $companyId)->get();
+        $taxRates = TaxRate::with('taxGroup')
+            ->whereHas('taxGroup', fn ($q) => $q->where('company_id', $companyId))
+            ->get();
 
         $branches = Branch::where('company_id', $companyId)->get(['id', 'name', 'phone', 'address', 'is_active']);
 
@@ -54,26 +56,30 @@ class SettingsController extends Controller
     public function storeTaxRate(Request $request): JsonResponse
     {
         $request->validate([
-            'name'       => 'required|string|max:100',
-            'rate'       => 'required|numeric|min:0|max:100',
-            'type'       => 'required|in:vat,service_charge,other',
-            'is_default' => 'boolean',
+            'name'         => 'required|string|max:100',
+            'rate'         => 'required|numeric|min:0|max:100',
+            'type'         => 'required|in:vat,service_charge,supplementary_duty,other',
             'is_inclusive' => 'boolean',
         ]);
 
-        // If marking as default, unset others
-        if ($request->is_default) {
-            TaxRate::where('company_id', $request->user()->company_id)
-                ->where('type', $request->type)
-                ->update(['is_default' => false]);
-        }
+        $companyId = $request->user()->company_id;
+
+        // Resolve or create a tax group for this company
+        $taxGroup = \App\Models\TaxGroup::firstOrCreate(
+            ['company_id' => $companyId, 'name' => 'Default'],
+            ['is_default' => true, 'is_active' => true]
+        );
 
         $tax = TaxRate::create([
-            ...$request->validated(),
-            'company_id' => $request->user()->company_id,
+            'tax_group_id' => $taxGroup->id,
+            'name'         => $request->name,
+            'rate'         => $request->rate,
+            'type'         => $request->type,
+            'is_inclusive' => $request->boolean('is_inclusive'),
+            'is_active'    => true,
         ]);
 
-        return response()->json(['tax_rate' => $tax, 'message' => 'Tax rate created.'], 201);
+        return response()->json(['tax_rate' => $tax->load('taxGroup'), 'message' => 'Tax rate created.'], 201);
     }
 
     public function updateTaxRate(Request $request, TaxRate $taxRate): JsonResponse
@@ -104,5 +110,14 @@ class SettingsController extends Controller
         ]);
 
         return response()->json(['branch' => $branch, 'message' => 'Branch created.'], 201);
+    }
+
+    public function getBranches(Request $request): JsonResponse
+    {
+        $branches = Branch::where('company_id', $request->user()->company_id)
+            ->where('is_active', true)
+            ->get(['id', 'name', 'code', 'address', 'city', 'phone', 'is_active']);
+
+        return response()->json($branches);
     }
 }

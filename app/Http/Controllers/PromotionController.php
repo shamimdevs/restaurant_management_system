@@ -35,19 +35,36 @@ class PromotionController extends Controller
     public function storePromotion(Request $request): JsonResponse
     {
         $request->validate([
-            'name'           => 'required|string|max:150',
-            'type'           => 'required|in:percentage,fixed,bxgy,free_item',
-            'discount_value' => 'nullable|numeric|min:0',
+            'name'             => 'required|string|max:150',
+            'type'             => 'required|in:percentage,fixed,bxgy,free_item,percentage_discount,fixed_discount,buy_x_get_y,happy_hour,combo',
+            'value'            => 'nullable|numeric|min:0',
+            'discount_value'   => 'nullable|numeric|min:0',
+            'min_order_value'  => 'nullable|numeric|min:0',
             'min_order_amount' => 'nullable|numeric|min:0',
-            'start_date'     => 'required|date',
-            'end_date'       => 'required|date|after_or_equal:start_date',
-            'applicable_days'=> 'nullable|array',
-            'is_active'      => 'boolean',
+            'start_date'       => 'required|date',
+            'end_date'         => 'required|date|after_or_equal:start_date',
+            'applicable_days'  => 'nullable|array',
+            'is_active'        => 'boolean',
         ]);
 
+        // Map frontend short type names to DB enum values
+        $typeMap = [
+            'percentage' => 'percentage_discount',
+            'fixed'      => 'fixed_discount',
+            'bxgy'       => 'buy_x_get_y',
+        ];
+        $dbType = $typeMap[$request->type] ?? $request->type;
+
         $promotion = Promotion::create([
-            ...$request->validated(),
-            'company_id' => $request->user()->company_id,
+            'company_id'      => $request->user()->company_id,
+            'name'            => $request->name,
+            'type'            => $dbType,
+            'value'           => $request->value ?? $request->discount_value ?? 0,
+            'min_order_value' => $request->min_order_value ?? $request->min_order_amount ?? 0,
+            'start_date'      => $request->start_date,
+            'end_date'        => $request->end_date,
+            'days_of_week'    => $request->applicable_days,
+            'is_active'       => $request->boolean('is_active', true),
         ]);
 
         return response()->json(['promotion' => $promotion, 'message' => 'Promotion created.'], 201);
@@ -85,18 +102,17 @@ class PromotionController extends Controller
     public function storeCoupon(Request $request): JsonResponse
     {
         $request->validate([
-            'code'              => 'required|string|max:50',
-            'discount_type'     => 'required|in:percentage,fixed',
-            'discount_value'    => 'required|numeric|min:0',
-            'min_order_amount'  => 'nullable|numeric|min:0',
-            'max_discount_amount'=> 'nullable|numeric|min:0',
-            'usage_limit'       => 'nullable|integer|min:1',
-            'usage_limit_per_user' => 'nullable|integer|min:1',
-            'expires_at'        => 'nullable|date|after:now',
-            'is_active'         => 'boolean',
+            'code'                  => 'required|string|max:50',
+            'discount_type'         => 'required|in:percentage,fixed',
+            'discount_value'        => 'required|numeric|min:0',
+            'min_order_amount'      => 'nullable|numeric|min:0',
+            'max_discount_amount'   => 'nullable|numeric|min:0',
+            'usage_limit'           => 'nullable|integer|min:1',
+            'usage_limit_per_user'  => 'nullable|integer|min:1',
+            'expires_at'            => 'nullable|date',
+            'is_active'             => 'boolean',
         ]);
 
-        // Check uniqueness within company
         $exists = Coupon::where('company_id', $request->user()->company_id)
             ->where('code', strtoupper($request->code))
             ->exists();
@@ -106,9 +122,17 @@ class PromotionController extends Controller
         }
 
         $coupon = Coupon::create([
-            ...$request->validated(),
-            'code'       => strtoupper($request->code),
-            'company_id' => $request->user()->company_id,
+            'company_id'              => $request->user()->company_id,
+            'code'                    => strtoupper($request->code),
+            'discount_type'           => $request->discount_type,
+            'discount_value'          => $request->discount_value,
+            'min_order_value'         => $request->min_order_amount ?? 0,
+            'max_discount'            => $request->max_discount_amount ?: null,
+            'usage_limit'             => $request->usage_limit ?: null,
+            'usage_limit_per_customer'=> $request->usage_limit_per_user ?? 1,
+            'valid_from'              => now(),
+            'valid_until'             => $request->expires_at ?: null,
+            'is_active'               => $request->boolean('is_active', true),
         ]);
 
         return response()->json(['coupon' => $coupon, 'message' => 'Coupon created.'], 201);
@@ -134,7 +158,16 @@ class PromotionController extends Controller
 
         $loyalty = LoyaltyProgram::updateOrCreate(
             ['company_id' => $request->user()->company_id],
-            $request->validated()
+            [
+                'name'                => 'Default Loyalty Program',
+                'points_per_currency' => $request->points_per_taka,
+                'currency_per_point'  => $request->taka_per_point,
+                'min_redeem_points'   => $request->min_redeem_points,
+                'redeem_value'        => $request->taka_per_point,
+                'min_order_for_earn'  => 0,
+                'point_expiry_days'   => $request->expiry_days,
+                'is_active'           => $request->boolean('is_active', true),
+            ]
         );
 
         return response()->json(['loyalty' => $loyalty, 'message' => 'Loyalty settings saved.']);

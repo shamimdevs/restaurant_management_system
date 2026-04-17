@@ -5,7 +5,7 @@ import {
     Package, AlertTriangle, Plus, Search, RefreshCw,
     TrendingDown, TrendingUp, BarChart3, Edit2,
     CheckCircle, X, Save, ChevronRight, History,
-    Filter, Download,
+    Filter, Download, Trash2, ChefHat,
 } from 'lucide-react';
 import Button from '@/Components/UI/Button';
 import Input from '@/Components/UI/Input';
@@ -181,18 +181,147 @@ function AdjustmentModal({ ingredient, onClose, onSaved }) {
     );
 }
 
+// ── Recipe Modal ───────────────────────────────────────────────────────────
+function RecipeModal({ recipe, onClose, onSaved }) {
+    const isEdit = !!recipe?.id;
+    const [menuItems, setMenuItems]     = useState([]);
+    const [ingredients, setIngredients] = useState([]);
+    const [units, setUnits]             = useState([]);
+    const [form, setForm] = useState({
+        menu_item_id:  recipe?.menu_item_id  || '',
+        yield_quantity: recipe?.yield_quantity || 1,
+        yield_unit_id:  recipe?.yield_unit_id  || '',
+        instructions:   recipe?.instructions   || '',
+        lines: recipe?.ingredients?.map(i => ({
+            ingredient_id: i.ingredient_id,
+            unit_id:       i.unit_id,
+            quantity:      i.quantity,
+        })) || [{ ingredient_id: '', unit_id: '', quantity: '' }],
+    });
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        Promise.all([
+            axios.get('/api/menu/items', { params: { per_page: 100 } }),
+            axios.get('/api/inventory/ingredients', { params: { per_page: 200 } }),
+            axios.get('/api/inventory/units'),
+        ]).then(([mi, ing, un]) => {
+            setMenuItems(mi.data.data || []);
+            setIngredients(ing.data.data || []);
+            setUnits(un.data || []);
+        });
+    }, []);
+
+    const addLine = () => setForm(f => ({ ...f, lines: [...f.lines, { ingredient_id: '', unit_id: '', quantity: '' }] }));
+    const removeLine = (i) => setForm(f => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) }));
+    const setLine = (i, k, v) => setForm(f => ({ ...f, lines: f.lines.map((l, idx) => idx === i ? { ...l, [k]: v } : l) }));
+
+    const submit = async () => {
+        setSaving(true);
+        try {
+            const payload = { ...form, ingredients: form.lines.filter(l => l.ingredient_id && l.quantity) };
+            if (isEdit) await axios.put(`/api/inventory/recipes/${recipe.id}`, payload);
+            else        await axios.post('/api/inventory/recipes', payload);
+            onSaved();
+        } catch (e) { alert(e.response?.data?.message || 'Failed'); }
+        finally { setSaving(false); }
+    };
+
+    return (
+        <Modal open onClose={onClose} title={isEdit ? 'Edit Recipe' : 'Create Recipe'} size="lg">
+            <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Menu Item *</label>
+                        <select value={form.menu_item_id} onChange={e => setForm(f => ({ ...f, menu_item_id: e.target.value }))}
+                            className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                            <option value="">Select menu item</option>
+                            {menuItems.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex gap-2">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Yield Qty *</label>
+                            <Input type="number" min={0.01} step="0.01" value={form.yield_quantity}
+                                onChange={e => setForm(f => ({ ...f, yield_quantity: e.target.value }))} />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Unit *</label>
+                            <select value={form.yield_unit_id} onChange={e => setForm(f => ({ ...f, yield_unit_id: e.target.value }))}
+                                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                                <option value="">Unit</option>
+                                {units.map(u => <option key={u.id} value={u.id}>{u.abbreviation}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-gray-700">Ingredients</label>
+                        <button onClick={addLine} className="text-xs text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                            <Plus className="w-3.5 h-3.5" /> Add Ingredient
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {form.lines.map((line, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                                <select value={line.ingredient_id} onChange={e => setLine(i, 'ingredient_id', e.target.value)}
+                                    className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                                    <option value="">Select ingredient</option>
+                                    {ingredients.map(ing => <option key={ing.id} value={ing.id}>{ing.name}</option>)}
+                                </select>
+                                <Input type="number" min={0.001} step="0.001" value={line.quantity}
+                                    onChange={e => setLine(i, 'quantity', e.target.value)}
+                                    placeholder="Qty" className="w-24" />
+                                <select value={line.unit_id} onChange={e => setLine(i, 'unit_id', e.target.value)}
+                                    className="w-20 border border-gray-300 rounded-xl px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                                    <option value="">Unit</option>
+                                    {units.map(u => <option key={u.id} value={u.id}>{u.abbreviation}</option>)}
+                                </select>
+                                {form.lines.length > 1 && (
+                                    <button onClick={() => removeLine(i)} className="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Instructions (optional)</label>
+                    <textarea value={form.instructions} onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))}
+                        rows={2} placeholder="Preparation instructions..."
+                        className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none" />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                    <Button variant="outline" className="flex-1" onClick={onClose} disabled={saving}>Cancel</Button>
+                    <Button className="flex-1" onClick={submit} loading={saving}>
+                        <Save className="w-4 h-4" /> {isEdit ? 'Update' : 'Save'} Recipe
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function InventoryIndex({ summary = {} }) {
     const [tab, setTab]                 = useState('ingredients'); // ingredients | alerts | movements | recipes
     const [ingredients, setIngredients] = useState([]);
     const [alerts, setAlerts]           = useState([]);
     const [movements, setMovements]     = useState([]);
+    const [recipes, setRecipes]         = useState([]);
     const [loading, setLoading]         = useState(false);
     const [search, setSearch]           = useState('');
     const [lowStockOnly, setLowStockOnly] = useState(false);
     const [addModal, setAddModal]       = useState(false);
     const [editItem, setEditItem]       = useState(null);
     const [adjustItem, setAdjustItem]   = useState(null);
+    const [recipeModal, setRecipeModal] = useState(false);
+    const [editRecipe, setEditRecipe]   = useState(null);
     const [page, setPage]               = useState(1);
     const [meta, setMeta]               = useState({});
 
@@ -219,9 +348,16 @@ export default function InventoryIndex({ summary = {} }) {
         setMovements(res.data.data || res.data);
     }, [tab, page]);
 
+    const fetchRecipes = useCallback(async () => {
+        if (tab !== 'recipes') return;
+        const res = await axios.get('/api/inventory/recipes');
+        setRecipes(res.data.data || res.data);
+    }, [tab]);
+
     useEffect(() => { fetchIngredients(); }, [fetchIngredients]);
     useEffect(() => { fetchAlerts(); },     [fetchAlerts]);
     useEffect(() => { fetchMovements(); },  [fetchMovements]);
+    useEffect(() => { fetchRecipes(); },    [fetchRecipes]);
 
     const resolveAlert = async (id) => {
         await axios.patch(`/api/inventory/alerts/${id}/resolve`);
@@ -265,6 +401,11 @@ export default function InventoryIndex({ summary = {} }) {
                     {tab === 'ingredients' && (
                         <Button size="sm" onClick={() => setAddModal(true)}>
                             <Plus className="w-4 h-4" /> Add
+                        </Button>
+                    )}
+                    {tab === 'recipes' && (
+                        <Button size="sm" onClick={() => setRecipeModal(true)}>
+                            <Plus className="w-4 h-4" /> Create Recipe
                         </Button>
                     )}
                 </div>
@@ -466,13 +607,56 @@ export default function InventoryIndex({ summary = {} }) {
 
                 {/* ── Recipes tab ── */}
                 {tab === 'recipes' && (
-                    <div className="p-4 text-center py-12">
-                        <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                        <p className="text-gray-500 font-medium">Recipe Management</p>
-                        <p className="text-gray-400 text-sm mt-1">Link menu items to ingredients for auto stock deduction</p>
-                        <Button className="mt-4" onClick={() => {}}>
-                            <Plus className="w-4 h-4" /> Create Recipe
-                        </Button>
+                    <div className="p-4">
+                        {recipes.length === 0 ? (
+                            <div className="py-12 text-center">
+                                <ChefHat className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                                <p className="text-gray-500 font-medium">No recipes yet</p>
+                                <p className="text-gray-400 text-sm mt-1">Link menu items to ingredients for automatic stock deduction</p>
+                                <Button className="mt-4" onClick={() => setRecipeModal(true)}>
+                                    <Plus className="w-4 h-4" /> Create First Recipe
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                                            <th className="pb-2 font-medium">Menu Item</th>
+                                            <th className="pb-2 font-medium">Ingredients</th>
+                                            <th className="pb-2 font-medium">Yield</th>
+                                            <th className="pb-2 font-medium text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {recipes.map(r => (
+                                            <tr key={r.id} className="hover:bg-gray-50/50">
+                                                <td className="py-3 pr-4 font-medium text-gray-800">{r.menu_item?.name || '—'}</td>
+                                                <td className="py-3 pr-4">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {(r.ingredients || []).slice(0, 3).map(ing => (
+                                                            <span key={ing.id} className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">
+                                                                {ing.ingredient?.name} ({ing.quantity} {ing.unit?.abbreviation})
+                                                            </span>
+                                                        ))}
+                                                        {(r.ingredients || []).length > 3 && (
+                                                            <span className="text-xs text-gray-400">+{r.ingredients.length - 3} more</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 pr-4 text-gray-600">{r.yield_quantity} {r.yield_unit?.abbreviation}</td>
+                                                <td className="py-3 text-right">
+                                                    <button onClick={() => setEditRecipe(r)}
+                                                        className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors">
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -496,6 +680,19 @@ export default function InventoryIndex({ summary = {} }) {
                     ingredient={adjustItem}
                     onClose={() => setAdjustItem(null)}
                     onSaved={() => { setAdjustItem(null); fetchIngredients(); fetchAlerts(); }}
+                />
+            )}
+            {recipeModal && (
+                <RecipeModal
+                    onClose={() => setRecipeModal(false)}
+                    onSaved={() => { setRecipeModal(false); fetchRecipes(); }}
+                />
+            )}
+            {editRecipe && (
+                <RecipeModal
+                    recipe={editRecipe}
+                    onClose={() => setEditRecipe(null)}
+                    onSaved={() => { setEditRecipe(null); fetchRecipes(); }}
                 />
             )}
         </AppLayout>

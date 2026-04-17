@@ -100,13 +100,21 @@ class User extends Authenticatable
 
     /**
      * Return the effective branch ID for this user.
-     * Super-admins (branch_id = null) fall back to the first active branch.
+     * Admin users respect the X-Branch-Id header (resolved by ResolveBranch middleware).
+     * Regular users are always fixed to their assigned branch.
      */
     public function effectiveBranchId(): ?int
     {
         if (! is_null($this->branch_id)) {
             return $this->branch_id;
         }
+
+        // Admin: use branch override set by ResolveBranch middleware
+        if (app()->has('active_branch_id')) {
+            return app('active_branch_id');
+        }
+
+        // Admin default: first active branch
         return Branch::where('company_id', $this->company_id)
             ->where('is_active', true)
             ->value('id');

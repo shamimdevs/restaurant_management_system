@@ -61,9 +61,9 @@ class CompanyBranchSeeder extends Seeder
         // ── Super Admin User ───────────────────────────────────────────
         DB::table('users')->insert([
             'company_id'  => $companyId,
-            'branch_id'   => null,               // access to all branches
+            'branch_id'   => null,
             'name'        => 'Super Admin',
-            'email'       => 'admin@spicegarden.com.bd',
+            'email'       => 'admin@gmail.com',
             'phone'       => '+8801700000001',
             'password'    => Hash::make('Password@123'),
             'is_active'   => true,

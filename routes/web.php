@@ -7,6 +7,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\MenuController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ReportController;
@@ -61,6 +62,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Table & Floor Plan
     Route::get('/tables', [TableController::class, 'index'])->name('tables.index');
+
+    // Order History
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 
     // Kitchen Display
     Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');

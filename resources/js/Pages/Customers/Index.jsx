@@ -212,6 +212,7 @@ export default function CustomersIndex() {
     const [segment, setSegment]     = useState('');
     const [page, setPage]           = useState(1);
     const [meta, setMeta]           = useState({});
+    const [stats, setStats]         = useState({ total: '—', vip: '—', active: '—', with_points: '—' });
     const [addModal, setAddModal]   = useState(false);
     const [editItem, setEditItem]   = useState(null);
     const [viewItem, setViewItem]   = useState(null);
@@ -225,6 +226,10 @@ export default function CustomersIndex() {
         } finally { setLoading(false); }
     }, [search, segment, page]);
 
+    useEffect(() => {
+        axios.get('/api/customers/stats').then(r => setStats(r.data)).catch(() => {});
+    }, []);
+
     useEffect(() => { fetch(); }, [fetch]);
 
     return (
@@ -232,16 +237,16 @@ export default function CustomersIndex() {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {[
-                    { label: 'Total Customers', icon: Users,     color: 'bg-violet-500' },
-                    { label: 'VIP Customers',   icon: Star,      color: 'bg-amber-500' },
-                    { label: 'Active (30d)',     icon: TrendingUp,color: 'bg-emerald-500' },
-                    { label: 'With Loyalty Pts', icon: Gift,     color: 'bg-blue-500' },
+                    { label: 'Total Customers',  icon: Users,      color: 'bg-violet-500', value: stats.total },
+                    { label: 'VIP Customers',    icon: Star,       color: 'bg-amber-500',  value: stats.vip },
+                    { label: 'Active (30d)',      icon: TrendingUp, color: 'bg-emerald-500',value: stats.active },
+                    { label: 'With Loyalty Pts', icon: Gift,       color: 'bg-blue-500',   value: stats.with_points },
                 ].map((s, i) => (
                     <div key={i} className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
                         <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center mb-3', s.color)}>
                             <s.icon className="w-5 h-5 text-white" />
                         </div>
-                        <p className="text-2xl font-bold text-gray-900">{meta[`stat_${i}`] ?? '—'}</p>
+                        <p className="text-2xl font-bold text-gray-900">{s.value}</p>
                         <p className="text-sm text-gray-500">{s.label}</p>
                     </div>
                 ))}
@@ -310,7 +315,7 @@ export default function CustomersIndex() {
                                         </td>
                                         <td className="px-4 py-3 text-sm text-gray-600">{c.phone}</td>
                                         <td className="px-4 py-3"><SegmentBadge segment={c.segment} /></td>
-                                        <td className="px-4 py-3 text-sm text-gray-700 font-medium">{c.total_orders ?? 0}</td>
+                                        <td className="px-4 py-3 text-sm text-gray-700 font-medium">{c.orders_count ?? c.total_orders ?? 0}</td>
                                         <td className="px-4 py-3 text-sm font-semibold text-gray-800">{formatCurrency(c.total_spent ?? 0)}</td>
                                         <td className="px-4 py-3">
                                             <span className="flex items-center gap-1 text-sm text-amber-600">

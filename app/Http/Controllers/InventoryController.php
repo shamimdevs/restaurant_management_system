@@ -101,7 +101,7 @@ class InventoryController extends Controller
 
     public function getRecipes(Request $request): JsonResponse
     {
-        $recipes = Recipe::with(['menuItem:id,name', 'ingredients.ingredient', 'ingredients.unit'])
+        $recipes = Recipe::with(['menuItem:id,name', 'yieldUnit:id,abbreviation', 'ingredients.ingredient', 'ingredients.unit'])
             ->whereHas('menuItem', fn ($q) => $q->where('company_id', $request->user()->company_id))
             ->paginate(20);
 
@@ -135,6 +135,33 @@ class InventoryController extends Controller
         return response()->json(['recipe' => $recipe->load('ingredients.ingredient'), 'message' => 'Recipe saved.']);
     }
 
+    public function updateRecipe(Request $request, Recipe $recipe): JsonResponse
+    {
+        $request->validate([
+            'yield_quantity'              => 'required|numeric|min:0.01',
+            'yield_unit_id'               => 'required|exists:units,id',
+            'ingredients'                 => 'required|array|min:1',
+            'ingredients.*.ingredient_id' => 'required|exists:ingredients,id',
+            'ingredients.*.unit_id'       => 'required|exists:units,id',
+            'ingredients.*.quantity'      => 'required|numeric|min:0.0001',
+        ]);
+
+        $recipe->update($request->only('yield_quantity', 'yield_unit_id', 'instructions'));
+        $recipe->ingredients()->delete();
+        foreach ($request->ingredients as $ing) {
+            $recipe->ingredients()->create($ing);
+        }
+
+        return response()->json(['recipe' => $recipe->load('ingredients.ingredient'), 'message' => 'Recipe updated.']);
+    }
+
+    public function getUnits(Request $request): JsonResponse
+    {
+        $units = \App\Models\Unit::where('company_id', $request->user()->company_id)
+            ->orderBy('type')->orderBy('name')->get();
+        return response()->json($units);
+    }
+
     // ── Stock Adjustments ────────────────────────────────────────────────
 
     public function createAdjustment(Request $request): JsonResponse
@@ -162,7 +189,7 @@ class InventoryController extends Controller
                 'branch_id'      => $branchId,
                 'ingredient_id'  => $ingredient->id,
                 'unit_id'        => $ingredient->unit_id,
-                'type'           => $delta >= 0 ? 'adjustment_in' : 'adjustment_out',
+                'type'           => 'adjustment',
                 'quantity'       => abs($delta),
                 'unit_cost'      => $ingredient->cost_per_unit,
                 'total_cost'     => round(abs($delta) * $ingredient->cost_per_unit, 2),

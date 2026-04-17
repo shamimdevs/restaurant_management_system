@@ -19,7 +19,8 @@ class CustomerController extends Controller
 
     public function list(Request $request): JsonResponse
     {
-        $customers = Customer::where('company_id', $request->user()->company_id)
+        $customers = Customer::withCount(['orders' => fn ($q) => $q->where('status', 'completed')])
+            ->where('company_id', $request->user()->company_id)
             ->when($request->search, fn ($q) => $q->where(fn ($q) =>
                 $q->where('name', 'like', "%{$request->search}%")
                   ->orWhere('phone', 'like', "%{$request->search}%")
@@ -78,6 +79,19 @@ class CustomerController extends Controller
     {
         $customer->update($request->only('name', 'email', 'gender', 'date_of_birth', 'anniversary_date', 'address', 'area', 'city', 'notes'));
         return response()->json(['customer' => $customer->fresh(), 'message' => 'Customer updated.']);
+    }
+
+    public function stats(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+        $base = Customer::where('company_id', $companyId);
+
+        return response()->json([
+            'total'      => $base->count(),
+            'vip'        => (clone $base)->where('segment', 'vip')->count(),
+            'active'     => (clone $base)->where('last_visit_at', '>=', now()->subDays(30))->count(),
+            'with_points'=> (clone $base)->where('loyalty_points', '>', 0)->count(),
+        ]);
     }
 
     public function searchByPhone(Request $request): JsonResponse

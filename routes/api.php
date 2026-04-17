@@ -7,6 +7,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\MenuController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ReportController;
@@ -93,9 +94,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('ingredients/{ingredient}',             [InventoryController::class, 'updateIngredient']);
         Route::get('recipes',                              [InventoryController::class, 'getRecipes']);
         Route::post('recipes',                             [InventoryController::class, 'storeRecipe']);
+        Route::put('recipes/{recipe}',                     [InventoryController::class, 'updateRecipe']);
         Route::get('movements',                            [InventoryController::class, 'getMovements']);
         Route::post('adjustments',                         [InventoryController::class, 'createAdjustment']);
         Route::post('adjustments/{adjustment}/approve',    [InventoryController::class, 'approveAdjustment']);
+        Route::get('units',                                [InventoryController::class, 'getUnits']);
         Route::get('alerts',                               [InventoryController::class, 'getAlerts']);
         Route::patch('alerts/{alert}/resolve',             [InventoryController::class, 'resolveAlert']);
     });
@@ -105,6 +108,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/',                              [CustomerController::class, 'list']);
         Route::post('/',                             [CustomerController::class, 'store']);
         Route::get('search',                         [CustomerController::class, 'searchByPhone']);
+        Route::get('stats',                          [CustomerController::class, 'stats']);
         Route::get('{customer}',                     [CustomerController::class, 'show']);
         Route::put('{customer}',                     [CustomerController::class, 'update']);
         Route::post('{customer}/feedback',           [CustomerController::class, 'storeFeedback']);
@@ -114,6 +118,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('employees')->group(function () {
         Route::get('/',                              [EmployeeController::class, 'index']);
         Route::post('/',                             [EmployeeController::class, 'store']);
+        Route::get('leave-types',                    [EmployeeController::class, 'getLeaveTypes']);
+        Route::get('leaves',                         [EmployeeController::class, 'getLeaves']);
+        Route::get('payroll',                        [EmployeeController::class, 'getPayroll']);
         Route::get('{employee}',                     [EmployeeController::class, 'show']);
         Route::put('{employee}',                     [EmployeeController::class, 'update']);
         Route::post('attendance',                    [EmployeeController::class, 'markAttendance']);
@@ -122,6 +129,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('leave/{leave}/action',         [EmployeeController::class, 'approveLeave']);
         Route::post('payroll/generate',              [EmployeeController::class, 'generatePayroll']);
         Route::post('payroll/process',               [EmployeeController::class, 'processPayroll']);
+    });
+
+    // ── Orders ───────────────────────────────────────────────────────────
+    Route::prefix('orders')->group(function () {
+        Route::get('today-stats',          [OrderController::class, 'todayStats']);
+        Route::get('/',                    [OrderController::class, 'list']);
+        Route::get('{order}',              [OrderController::class, 'show']);
+        Route::patch('{order}/status',     [OrderController::class, 'updateStatus']);
     });
 
     // ── Reports ───────────────────────────────────────────────────────────
@@ -164,4 +179,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('tax-rates/{taxRate}',         [SettingsController::class, 'updateTaxRate']);
         Route::post('branches',                   [SettingsController::class, 'storeBranch']);
     });
+
+    // ── Branches (for branch selector) ────────────────────────────────────
+    Route::get('branches', [SettingsController::class, 'getBranches']);
 });
